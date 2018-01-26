@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,7 +9,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
-	// "gopkg.in/src-d/go-billy.v4"
+
 	"gopkg.in/src-d/go-billy-siva.v4"
 	"gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-billy.v4/memfs"
@@ -33,7 +32,8 @@ func NewRootSivaFs(path string) *RootSivaFS {
 
 func (r *RootSivaFS) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
 	ok, fsPath, sivaPath := getSivaPath(name)
-	println(ok, fsPath, sivaPath)
+
+	// TODO: why can not stat directories from siva?
 
 	var file os.FileInfo
 	var err error
@@ -47,33 +47,22 @@ func (r *RootSivaFS) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fu
 		}
 
 		file, err = siva.Stat(sivaPath)
-		fmt.Printf("%+v", file)
-		if file != nil {
-			fmt.Printf("isdir %v", file.IsDir())
-		} else {
-			println("FILE IS NIL")
-		}
 
+		// go-billy-siva stat does not work for directories. Check if ReadDir works
 		if file == nil {
 			var d []os.FileInfo
 			d, err = siva.ReadDir(sivaPath)
 			if err == nil {
-				println("It seems to be a dir")
-				fmt.Printf("%+v, %v\n", d, len(d))
+				// only set as directory if it contains something
 				if len(d) > 0 {
 					isdir = true
 				}
 			}
 		}
 	} else {
-		println("normal file")
 		file, err = r.FS.Stat(fsPath)
 	}
 
-	println("ISDIR", isdir)
-	println("ERR", err)
-
-	// TODO: why can not stat directories from siva?
 	if isdir {
 		a := fuse.Attr{
 			Owner: *fuse.CurrentOwner(),
@@ -85,12 +74,10 @@ func (r *RootSivaFS) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fu
 	}
 
 	if err != nil {
-		println("ERROR", fsPath, sivaPath, err.Error())
 		return &fuse.Attr{}, fuse.ENOENT
 	}
 
 	if file == nil {
-		println("FILE ES NIL")
 		return &fuse.Attr{}, fuse.ENOENT
 	}
 
@@ -161,7 +148,6 @@ func (r *RootSivaFS) OpenDir(name string, context *fuse.Context) (stream []fuse.
 
 type billyFile struct {
 	nodefs.File
-	// siva siva.SivaFS
 	file billy.File
 }
 
@@ -181,8 +167,6 @@ func (r *RootSivaFS) Open(name string, flags uint32,
 
 	ok, fsPath, sivaPath := getSivaPath(name)
 
-	println("IT'S AN OPEN!!")
-
 	var f billy.File
 	var err error
 
@@ -193,16 +177,12 @@ func (r *RootSivaFS) Open(name string, flags uint32,
 			return nil, fuse.ENOENT
 		}
 
-		println("SIVA CREATED")
-
 		f, err = siva.OpenFile("/"+sivaPath, os.O_RDONLY, 0400)
-		println("FILE OPENED")
 	} else {
 		f, err = r.FS.OpenFile(fsPath, os.O_RDONLY, 0400)
 	}
 
 	if err != nil {
-		println("ERROR", err.Error())
 		return nil, fuse.ENOSYS
 	}
 
