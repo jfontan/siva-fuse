@@ -37,7 +37,6 @@ func (r *RootSivaFS) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fu
 
 	var file os.FileInfo
 	var err error
-	isdir := false
 
 	if ok {
 		var siva sivafs.SivaFS
@@ -47,30 +46,11 @@ func (r *RootSivaFS) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fu
 		}
 
 		file, err = siva.Stat(sivaPath)
-
-		// go-billy-siva stat does not work for directories. Check if ReadDir works
 		if file == nil {
-			var d []os.FileInfo
-			d, err = siva.ReadDir(sivaPath)
-			if err == nil {
-				// only set as directory if it contains something
-				if len(d) > 0 {
-					isdir = true
-				}
-			}
+			return nil, fuse.ENOENT
 		}
 	} else {
 		file, err = r.FS.Stat(fsPath)
-	}
-
-	if isdir {
-		a := fuse.Attr{
-			Owner: *fuse.CurrentOwner(),
-			Mode:  0500 | fuse.S_IFDIR,
-			Size:  uint64(0),
-		}
-
-		return &a, fuse.OK
 	}
 
 	if err != nil {
@@ -190,7 +170,6 @@ func (r *RootSivaFS) Open(name string, flags uint32,
 		file: f,
 		File: nodefs.NewDefaultFile(),
 	}, fuse.OK
-
 }
 
 func printHelp() {
