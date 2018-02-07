@@ -89,6 +89,49 @@ func getSivaPath(name string) (ok bool, fsPath, sivaPath string) {
 	return false, name, ""
 }
 
+var pathTypes = []string{
+	"branch",
+	"tag",
+	"commit",
+}
+
+func getGitPath(name string) (ok bool, pathType, ref, path string) {
+	ok = false
+	pathType = ""
+	ref = ""
+	path = ""
+
+	p := strings.Split(name, "/")
+	base := p[0]
+	baseLen := len(base)
+
+	if base[:1] != "_" && base[baseLen-1:1] != "_" {
+		return
+	}
+
+	for _, t := range pathTypes {
+		// TODO: these strings and lengths should be pregenerated
+		str := "_" + t + "_"
+		strLen := len(str)
+
+		if baseLen == strLen && base == str {
+			ok = true
+			pathType = t
+
+			if len(p) > 1 {
+				ref = p[1]
+				if len(p) > 2 {
+					path = strings.Join(p[2:], "/")
+				}
+			}
+
+			return
+		}
+	}
+
+	return
+}
+
 func (r *RootSivaFS) newSivaFS(fsPath string) (sivafs.SivaFS, error) {
 	return sivafs.NewFilesystem(r.FS, fsPath, memfs.New())
 }
@@ -177,13 +220,13 @@ func printHelp() {
 }
 
 func main() {
-	sivaDir := os.Args[1]
-	mountDir := os.Args[2]
-
-	if sivaDir == "" || mountDir == "" {
+	if len(os.Args) != 3 {
 		printHelp()
 		os.Exit(1)
 	}
+
+	sivaDir := os.Args[1]
+	mountDir := os.Args[2]
 
 	fs := osfs.New(sivaDir)
 
