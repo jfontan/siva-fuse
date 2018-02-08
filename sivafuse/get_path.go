@@ -1,4 +1,4 @@
-package siva_fuse
+package sivafuse
 
 import (
 	"path/filepath"

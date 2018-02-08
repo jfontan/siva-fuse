@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/jfontan/siva-fuse/siva_fuse"
+	"github.com/jfontan/siva-fuse/sivafuse"
 
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
@@ -18,7 +18,7 @@ func printHelp() {
 func NewSivaNodeFs(sivaDir string) *pathfs.PathNodeFs {
 	fs := osfs.New(sivaDir)
 
-	root := sivaFuse.NewRootSivaFs(sivaDir)
+	root := sivafuse.NewRootSivaFs(sivaDir)
 	root.FS = fs
 	pathOpts := &pathfs.PathNodeFsOptions{}
 	rootfs := pathfs.NewPathNodeFs(root, pathOpts)

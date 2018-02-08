@@ -1,4 +1,4 @@
-package sivaFuse
+package sivafuse
 
 import (
 	"io"
