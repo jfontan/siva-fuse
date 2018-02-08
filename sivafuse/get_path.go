@@ -29,11 +29,15 @@ func getGitPath(name string) (ok bool, pathType, ref, path string) {
 	ref = ""
 	path = ""
 
+	if name != "" && name[0:1] == "/" {
+		name = name[1:]
+	}
+
 	p := strings.Split(name, "/")
 	base := p[0]
 	baseLen := len(base)
 
-	if base[:1] != "_" && base[baseLen-1:1] != "_" {
+	if baseLen < 2 || (base[:1] != "_" && base[baseLen-1:] != "_") {
 		return
 	}
 
