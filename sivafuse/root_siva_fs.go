@@ -41,7 +41,6 @@ func (r *RootSivaFS) GetAttr(
 
 	if ok {
 		isGit, pType, ref, refPath := getGitPath(sivaPath)
-		println(isGit, pType, ref, refPath)
 
 		if isGit && ref == "" {
 			file = getTypeFileInfo(pType)
@@ -117,7 +116,6 @@ func (r *RootSivaFS) OpenDir(
 		if isGit {
 			var git *GitRepo
 
-			println(isGit, pType, ref, refPath)
 			git, err = GitOpen(siva)
 			if err != nil {
 				return nil, fuse.ENOENT
