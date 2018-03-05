@@ -15,6 +15,7 @@ func printHelp() {
 	println("You have to provide <siva dir> <mount point>")
 }
 
+// NewSivaNodeFs creates a new PathNodeFs from the provided path
 func NewSivaNodeFs(sivaDir string) *pathfs.PathNodeFs {
 	fs := osfs.New(sivaDir)
 

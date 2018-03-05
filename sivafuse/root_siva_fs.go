@@ -13,6 +13,7 @@ import (
 	"gopkg.in/src-d/go-billy.v4/memfs"
 )
 
+// RootSivaFS holds filesystem where siva files are stored
 type RootSivaFS struct {
 	path string
 	pathfs.FileSystem
@@ -20,6 +21,7 @@ type RootSivaFS struct {
 	SivaFS sivafs.SivaFS
 }
 
+// NewRootSivaFs creates a new RootSivaFS from a path
 func NewRootSivaFs(path string) *RootSivaFS {
 	return &RootSivaFS{
 		path:       path,
@@ -27,10 +29,12 @@ func NewRootSivaFs(path string) *RootSivaFS {
 	}
 }
 
-func (r *RootSivaFS) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
+// GetAttr returns file attributes
+func (r *RootSivaFS) GetAttr(
+	name string,
+	context *fuse.Context,
+) (*fuse.Attr, fuse.Status) {
 	ok, fsPath, sivaPath := getSivaPath(name)
-
-	// TODO: why can not stat directories from siva?
 
 	var file os.FileInfo
 	var err error
@@ -58,7 +62,7 @@ func (r *RootSivaFS) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fu
 		return &fuse.Attr{}, fuse.ENOENT
 	}
 
-	mode := uint32(0)
+	var mode uint32
 	if file.IsDir() {
 		mode = 0500 | fuse.S_IFDIR
 	} else {
@@ -78,7 +82,11 @@ func (r *RootSivaFS) newSivaFS(fsPath string) (sivafs.SivaFS, error) {
 	return sivafs.NewFilesystem(r.FS, fsPath, memfs.New())
 }
 
-func (r *RootSivaFS) OpenDir(name string, context *fuse.Context) (stream []fuse.DirEntry, code fuse.Status) {
+// OpenDir returns the list of files in a given directory
+func (r *RootSivaFS) OpenDir(
+	name string,
+	context *fuse.Context,
+) (stream []fuse.DirEntry, code fuse.Status) {
 	ok, fsPath, sivaPath := getSivaPath(name)
 
 	var dir []os.FileInfo
@@ -116,8 +124,15 @@ type billyFile struct {
 	file billy.File
 }
 
-func (s *billyFile) Read(dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
-	s.file.Seek(off, io.SeekStart)
+// Read fills a buffer with bytes from a file
+func (s *billyFile) Read(
+	dest []byte,
+	off int64,
+) (fuse.ReadResult, fuse.Status) {
+	_, err := s.file.Seek(off, io.SeekStart)
+	if err != nil {
+		return nil, fuse.EINVAL
+	}
 
 	n, err := s.file.Read(dest)
 	if err != nil {
@@ -127,9 +142,12 @@ func (s *billyFile) Read(dest []byte, off int64) (fuse.ReadResult, fuse.Status) 
 	return fuse.ReadResultData(dest[:n]), fuse.OK
 }
 
-func (r *RootSivaFS) Open(name string, flags uint32,
-	context *fuse.Context) (nodefs.File, fuse.Status) {
-
+// Open retrieves a nodefs.File struct from a path
+func (r *RootSivaFS) Open(
+	name string,
+	flags uint32,
+	context *fuse.Context,
+) (nodefs.File, fuse.Status) {
 	ok, fsPath, sivaPath := getSivaPath(name)
 
 	var f billy.File
