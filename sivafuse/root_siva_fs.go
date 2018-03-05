@@ -110,7 +110,27 @@ func (r *RootSivaFS) OpenDir(
 		isGit, pType, ref, refPath := getGitPath(sivaPath)
 
 		if isGit {
+			var git *GitRepo
+
 			println(isGit, pType, ref, refPath)
+			git, err = GitOpen(siva)
+			if err != nil {
+				return nil, fuse.ENOENT
+			}
+
+			if ref == "" {
+				switch pType {
+				case "commit":
+					dir, err = git.DirCommits()
+
+				default:
+					return nil, fuse.ENOENT
+				}
+
+				if err != nil {
+					return nil, fuse.ENOENT
+				}
+			}
 		} else {
 			dir, err = siva.ReadDir("/" + sivaPath)
 
