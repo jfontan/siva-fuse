@@ -6,6 +6,8 @@ import (
 
 	"gopkg.in/src-d/go-billy-siva.v4"
 	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/storage/filesystem"
 )
 
@@ -30,8 +32,43 @@ func GitOpen(sivaFS sivafs.SivaFS) (*GitRepo, error) {
 	return &GitRepo{Repo: g}, err
 }
 
-// DirCommits returns a FileInfo array of commit hashes
-func (r *GitRepo) DirCommits() ([]os.FileInfo, error) {
+func (r *GitRepo) GetAttr(pType, ref, path string) (os.FileInfo, error) {
+	switch pType {
+	case "commit":
+		return r.StatCommit(ref, path)
+
+	default:
+		return nil, os.ErrNotExist
+	}
+}
+
+// List gets a FileInfo array of objects
+func (r *GitRepo) List(pType, ref, path string) ([]os.FileInfo, error) {
+	switch pType {
+	case "commit":
+		return r.ListCommits()
+
+	default:
+		return nil, os.ErrNotExist
+	}
+}
+
+// StatCommit returns a FileInfo of the provided reference and path
+func (r *GitRepo) StatCommit(ref, path string) (os.FileInfo, error) {
+	if path != "" {
+		return nil, os.ErrNotExist
+	}
+
+	commit, err := r.Repo.CommitObject(plumbing.NewHash(ref))
+	if err != nil {
+		return nil, err
+	}
+
+	return commitInfo(commit), nil
+}
+
+// ListCommits returns a FileInfo array of commit hashes
+func (r *GitRepo) ListCommits() ([]os.FileInfo, error) {
 	commits, err := r.Repo.CommitObjects()
 	if err != nil {
 		return nil, err
@@ -51,11 +88,15 @@ func (r *GitRepo) DirCommits() ([]os.FileInfo, error) {
 			break
 		}
 
-		name := c.Hash.String()
-		text := c.String()
-
-		files = append(files, NewFileInfo(name, int64(len(text)), false))
+		files = append(files, commitInfo(c))
 	}
 
 	return files, nil
+}
+
+func commitInfo(commit *object.Commit) os.FileInfo {
+	name := commit.Hash.String()
+	text := commit.String()
+
+	return NewFileInfo(name, int64(len(text)), false)
 }

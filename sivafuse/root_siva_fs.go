@@ -53,8 +53,13 @@ func (r *RootSivaFS) GetAttr(
 			}
 
 			if isGit {
-				// TODO: implement get from git repo
-				return nil, fuse.ENOENT
+				var git *GitRepo
+				git, err = GitOpen(siva)
+				if err != nil {
+					return nil, fuse.ENOENT
+				}
+
+				file, err = git.GetAttr(pType, ref, refPath)
 			} else {
 				file, err = siva.Stat(sivaPath)
 				if file == nil {
@@ -118,18 +123,9 @@ func (r *RootSivaFS) OpenDir(
 				return nil, fuse.ENOENT
 			}
 
-			if ref == "" {
-				switch pType {
-				case "commit":
-					dir, err = git.DirCommits()
-
-				default:
-					return nil, fuse.ENOENT
-				}
-
-				if err != nil {
-					return nil, fuse.ENOENT
-				}
+			dir, err = git.List(pType, ref, refPath)
+			if err != nil {
+				return nil, fuse.ENOENT
 			}
 		} else {
 			dir, err = siva.ReadDir("/" + sivaPath)
