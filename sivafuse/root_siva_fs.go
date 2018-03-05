@@ -192,7 +192,22 @@ func (r *RootSivaFS) Open(
 			return nil, fuse.ENOENT
 		}
 
-		f, err = siva.OpenFile("/"+sivaPath, os.O_RDONLY, 0400)
+		isGit, pType, ref, path := getGitPath(sivaPath)
+
+		if isGit {
+			var git *GitRepo
+			git, err = GitOpen(siva)
+
+			if err == nil {
+				var fuseFile nodefs.File
+				fuseFile, err = git.Open(pType, ref, path)
+				if err == nil {
+					return fuseFile, fuse.OK
+				}
+			}
+		} else {
+			f, err = siva.OpenFile("/"+sivaPath, os.O_RDONLY, 0400)
+		}
 	} else {
 		f, err = r.FS.OpenFile(fsPath, os.O_RDONLY, 0400)
 	}

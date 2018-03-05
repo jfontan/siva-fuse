@@ -1,9 +1,12 @@
 package sivafuse
 
 import (
+	"bytes"
 	"io"
 	"os"
 
+	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"gopkg.in/src-d/go-billy-siva.v4"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -99,4 +102,76 @@ func commitInfo(commit *object.Commit) os.FileInfo {
 	text := commit.String()
 
 	return NewFileInfo(name, int64(len(text)), false)
+}
+
+func (r *GitRepo) Open(pType, ref, path string) (nodefs.File, error) {
+	switch pType {
+	case "commit":
+		return r.OpenCommit(ref, path)
+
+	default:
+		return nil, os.ErrNotExist
+	}
+}
+
+func (r *GitRepo) OpenCommit(ref, path string) (nodefs.File, error) {
+	if path != "" {
+		return nil, os.ErrNotExist
+	}
+
+	commit, err := r.Repo.CommitObject(plumbing.NewHash(ref))
+	if err != nil {
+		return nil, err
+	}
+
+	reader := bytes.NewBufferString(commit.String())
+	closer := &readCloser{reader}
+	file := NewFuseFile(closer)
+	return file, nil
+}
+
+type readCloser struct {
+	io.Reader
+}
+
+func (readCloser) Close() error {
+	return nil
+}
+
+type fuseFile struct {
+	nodefs.File
+	reader io.ReadCloser
+}
+
+func NewFuseFile(read io.ReadCloser) *fuseFile {
+	return &fuseFile{
+		File:   nodefs.NewDefaultFile(),
+		reader: read,
+	}
+}
+
+// Read fills a buffer with bytes from a reader
+func (f *fuseFile) Read(
+	dest []byte,
+	off int64,
+) (fuse.ReadResult, fuse.Status) {
+	// Skip offset bytes
+	if off != 0 {
+		buf := make([]byte, off)
+		_, err := f.reader.Read(buf)
+		if err != nil {
+			return nil, fuse.EINVAL
+		}
+	}
+
+	n, err := f.reader.Read(dest)
+	if err != nil {
+		return nil, fuse.EINVAL
+	}
+
+	return fuse.ReadResultData(dest[:n]), fuse.OK
+}
+
+func (f *fuseFile) Close() error {
+	return f.reader.Close()
 }
