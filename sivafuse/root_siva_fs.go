@@ -40,25 +40,33 @@ func (r *RootSivaFS) GetAttr(
 	var err error
 
 	if ok {
-		var siva sivafs.SivaFS
-		siva, err = r.newSivaFS(fsPath)
-		if err != nil {
-			return nil, fuse.ENOENT
-		}
+		isGit, pType, ref, refPath := getGitPath(sivaPath)
+		println(isGit, pType, ref, refPath)
 
-		file, err = siva.Stat(sivaPath)
-		if file == nil {
-			return nil, fuse.ENOENT
+		if isGit && ref == "" {
+			file = getTypeFileInfo(pType)
+		} else {
+			var siva sivafs.SivaFS
+			siva, err = r.newSivaFS(fsPath)
+			if err != nil {
+				return nil, fuse.ENOENT
+			}
+
+			if isGit {
+				// TODO: implement get from git repo
+				return nil, fuse.ENOENT
+			} else {
+				file, err = siva.Stat(sivaPath)
+				if file == nil {
+					return nil, fuse.ENOENT
+				}
+			}
 		}
 	} else {
 		file, err = r.FS.Stat(fsPath)
 	}
 
-	if err != nil {
-		return &fuse.Attr{}, fuse.ENOENT
-	}
-
-	if file == nil {
+	if err != nil || file == nil {
 		return &fuse.Attr{}, fuse.ENOENT
 	}
 
@@ -99,7 +107,17 @@ func (r *RootSivaFS) OpenDir(
 			return nil, fuse.ENOENT
 		}
 
-		dir, err = siva.ReadDir("/" + sivaPath)
+		isGit, pType, ref, refPath := getGitPath(sivaPath)
+
+		if isGit {
+			println(isGit, pType, ref, refPath)
+		} else {
+			dir, err = siva.ReadDir("/" + sivaPath)
+
+			if err == nil && sivaPath == "" {
+				dir = append(dir, getPathTypesFileInfo()...)
+			}
+		}
 	} else {
 		dir, err = r.FS.ReadDir("/" + name)
 	}

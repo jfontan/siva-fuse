@@ -1,8 +1,10 @@
 package sivafuse
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func getSivaPath(name string) (ok bool, fsPath, sivaPath string) {
@@ -62,4 +64,57 @@ func getGitPath(name string) (ok bool, pathType, ref, path string) {
 	}
 
 	return
+}
+
+type fileInfo struct {
+	name string
+	size int64
+	dir  bool
+}
+
+// NewFileInfo creates a new fileInfo object
+func NewFileInfo(name string, size int64, dir bool) os.FileInfo {
+	return &fileInfo{
+		name: name,
+		size: size,
+		dir:  dir,
+	}
+}
+
+func (p *fileInfo) Name() string {
+	return p.name
+}
+
+func (p *fileInfo) IsDir() bool {
+	return p.dir
+}
+
+func (p *fileInfo) ModTime() time.Time {
+	return time.Now()
+}
+
+func (p *fileInfo) Mode() os.FileMode {
+	return 0500
+}
+
+func (p *fileInfo) Sys() interface{} {
+	return nil
+}
+
+func (p fileInfo) Size() int64 {
+	return p.size
+}
+
+func getTypeFileInfo(name string) os.FileInfo {
+	return NewFileInfo("_"+name+"_", 0, true)
+}
+
+func getPathTypesFileInfo() []os.FileInfo {
+	info := make([]os.FileInfo, len(pathTypes))
+
+	for i, dir := range pathTypes {
+		info[i] = getTypeFileInfo(dir)
+	}
+
+	return info
 }
