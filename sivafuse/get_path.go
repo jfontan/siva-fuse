@@ -3,6 +3,7 @@ package sivafuse
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -61,6 +62,62 @@ func getGitPath(name string) (ok bool, pathType, ref, path string) {
 
 			return
 		}
+	}
+
+	return
+}
+
+// Types:
+//
+// * root
+// * message
+// * parent
+// * tree
+func getCommitPath(name string) (ok bool, pathType, path string) {
+	ok = false
+	pathType = ""
+	path = ""
+
+	if name != "" && name[0:1] == "/" {
+		name = name[1:]
+	}
+
+	if name == "" {
+		return true, "root", ""
+	}
+
+	p := strings.Split(name, "/")
+	base := p[0]
+
+	switch base {
+	case "message":
+		if len(p) != 1 {
+			return
+		}
+		return true, p[0], ""
+
+	case "parent":
+		// Can not have subdirectories
+		if len(p) > 2 {
+			return
+		}
+
+		// Files in the subdirectory are parent indexes (unsigned ints)
+		if len(p) > 1 {
+			_, err := strconv.ParseUint(p[1], 10, 8)
+			if err != nil {
+				return
+			}
+			path = p[1]
+		}
+		return true, p[0], path
+
+	case "tree":
+		if len(p) == 1 {
+			return true, p[0], ""
+		}
+
+		return true, p[0], filepath.Join(p[1:len(p)]...)
 	}
 
 	return

@@ -43,3 +43,44 @@ func TestGetGitPath(t *testing.T) {
 		assert.Equal(t, e, got)
 	}
 }
+
+type commitExample struct {
+	Example  string
+	Ok       bool
+	PathType string
+	Path     string
+}
+
+var commitExamples = []commitExample{
+	{
+		Example:  "/this/is/a/path",
+		Ok:       false,
+		PathType: "",
+		Path:     "",
+	},
+	{"message", true, "message", ""},
+	{"/message", true, "message", ""},
+	{"parent", true, "parent", ""},
+	{"parent/0", true, "parent", "0"},
+	{"parent/100", true, "parent", "100"},
+	{"parent/100/12", false, "", ""},
+	{"parent/test", false, "", ""},
+	{"tree", true, "tree", ""},
+	{"tree/src", true, "tree", "src"},
+	{"tree/src/a", true, "tree", "src/a"},
+}
+
+func TestGetCommitPath(t *testing.T) {
+	for _, e := range commitExamples {
+		ok, pathType, path := getCommitPath(e.Example)
+
+		got := commitExample{
+			Example:  e.Example,
+			Ok:       ok,
+			PathType: pathType,
+			Path:     path,
+		}
+
+		assert.Equal(t, e, got)
+	}
+}
