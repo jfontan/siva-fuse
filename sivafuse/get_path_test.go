@@ -68,6 +68,8 @@ var commitExamples = []commitExample{
 	{"tree", true, "tree", ""},
 	{"tree/src", true, "tree", "src"},
 	{"tree/src/a", true, "tree", "src/a"},
+	{"", true, "root", ""},
+	{"08739d56c85059420/a42cbb342ccf4e68", false, "", ""},
 }
 
 func TestGetCommitPath(t *testing.T) {

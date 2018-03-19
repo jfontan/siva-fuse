@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+const (
+	tCommit  = "commit"
+	tBranch  = "branch"
+	tTag     = "tag"
+	tRoot    = "root"
+	tMessage = "message"
+	tParent  = "parent"
+	tTree    = "tree"
+)
+
 func getSivaPath(name string) (ok bool, fsPath, sivaPath string) {
 	p := strings.Split(name, "/")
 
@@ -21,9 +31,9 @@ func getSivaPath(name string) (ok bool, fsPath, sivaPath string) {
 }
 
 var pathTypes = []string{
-	"branch",
-	"tag",
-	"commit",
+	tBranch,
+	tTag,
+	tCommit,
 }
 
 func getGitPath(name string) (ok bool, pathType, ref, path string) {
@@ -69,6 +79,7 @@ func getGitPath(name string) (ok bool, pathType, ref, path string) {
 
 // Types:
 //
+// * commit
 // * root
 // * message
 // * parent
@@ -83,20 +94,20 @@ func getCommitPath(name string) (ok bool, pathType, path string) {
 	}
 
 	if name == "" {
-		return true, "root", ""
+		return true, tRoot, ""
 	}
 
 	p := strings.Split(name, "/")
 	base := p[0]
 
 	switch base {
-	case "message":
+	case tMessage:
 		if len(p) != 1 {
 			return
 		}
 		return true, p[0], ""
 
-	case "parent":
+	case tParent:
 		// Can not have subdirectories
 		if len(p) > 2 {
 			return
@@ -112,7 +123,7 @@ func getCommitPath(name string) (ok bool, pathType, path string) {
 		}
 		return true, p[0], path
 
-	case "tree":
+	case tTree:
 		if len(p) == 1 {
 			return true, p[0], ""
 		}
