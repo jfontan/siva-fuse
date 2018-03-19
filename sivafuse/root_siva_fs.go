@@ -3,6 +3,7 @@ package sivafuse
 import (
 	"io"
 	"os"
+	"syscall"
 
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
@@ -27,6 +28,36 @@ func NewRootSivaFs(path string) *RootSivaFS {
 		path:       path,
 		FileSystem: pathfs.NewDefaultFileSystem(),
 	}
+}
+
+func (r *RootSivaFS) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
+	ok, fsPath, sivaPath := getSivaPath(name)
+
+	if ok {
+		isGit, pType, ref, refPath := getGitPath(sivaPath)
+
+		if isGit {
+			siva, err := r.newSivaFS(fsPath)
+			if err != nil {
+				return "", fuse.ENOENT
+			}
+
+			git, err := GitOpen(siva)
+			if err != nil {
+				return "", fuse.ENOENT
+			}
+
+			link, err := git.Readlink(pType, ref, refPath)
+			if err != nil {
+				return "", fuse.ENOENT
+			}
+
+			return link, fuse.OK
+		}
+	}
+
+	// return "lalalal", fuse.OK
+	return "", fuse.ENOENT
 }
 
 // GetAttr returns file attributes
@@ -79,6 +110,10 @@ func (r *RootSivaFS) GetAttr(
 		mode = 0500 | fuse.S_IFDIR
 	} else {
 		mode = 0400 | fuse.S_IFREG
+	}
+
+	if file.Mode()&syscall.S_IFLNK != 0 {
+		mode |= syscall.S_IFLNK
 	}
 
 	a := fuse.Attr{

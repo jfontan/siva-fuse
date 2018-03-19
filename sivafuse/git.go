@@ -2,8 +2,10 @@ package sivafuse
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/hanwen/go-fuse/fuse"
@@ -92,7 +94,11 @@ func (r *GitRepo) statCommitFile(ref, pType, path string) (os.FileInfo, error) {
 	case tMessage:
 		return NewFileInfo(tMessage, int64(len(commit.String())), false), nil
 	case tParent:
-		return NewFileInfo(tParent, 0, true), nil
+		if path == "" {
+			return NewFileInfo(tParent, 0, true), nil
+		}
+
+		return NewLinkInfo(filepath.Base(path)), nil
 	case tTree:
 		return r.statTreeFile(ref, path)
 	}
@@ -246,6 +252,33 @@ func (r *GitRepo) listTree(ref, path string) ([]os.FileInfo, error) {
 	}
 
 	return files, nil
+}
+
+func (r *GitRepo) Readlink(pType, ref, path string) (string, error) {
+	switch pType {
+	case tCommit:
+		ok, pathType, p := getCommitPath(path)
+		if ok && pathType == tParent && p != "" {
+			commit, err := r.Repo.CommitObject(plumbing.NewHash(ref))
+			if err != nil {
+				return "", err
+			}
+
+			num, _ := strconv.Atoi(p)
+			parent, err := commit.Parent(num)
+			if err != nil {
+				return "", err
+			}
+
+			hash := parent.Hash.String()
+			return fmt.Sprintf("../../%v", hash), nil
+		}
+
+		return "", os.ErrNotExist
+
+	default:
+		return "", os.ErrNotExist
+	}
 }
 
 func commitInfo(commit *object.Commit) os.FileInfo {

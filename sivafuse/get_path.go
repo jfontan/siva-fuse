@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -138,6 +139,7 @@ type fileInfo struct {
 	name string
 	size int64
 	dir  bool
+	link bool
 }
 
 // NewFileInfo creates a new fileInfo object
@@ -146,6 +148,15 @@ func NewFileInfo(name string, size int64, dir bool) os.FileInfo {
 		name: name,
 		size: size,
 		dir:  dir,
+		link: false,
+	}
+}
+
+func NewLinkInfo(name string) os.FileInfo {
+	return &fileInfo{
+		name: name,
+		size: 0,
+		link: true,
 	}
 }
 
@@ -162,7 +173,12 @@ func (p *fileInfo) ModTime() time.Time {
 }
 
 func (p *fileInfo) Mode() os.FileMode {
-	return 0500
+	mode := 0500
+	if p.link {
+		mode |= syscall.S_IFLNK
+	}
+
+	return os.FileMode(mode)
 }
 
 func (p *fileInfo) Sys() interface{} {
