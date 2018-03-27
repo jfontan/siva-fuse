@@ -43,6 +43,9 @@ func (r *GitRepo) GetAttr(pType, ref, path string) (os.FileInfo, error) {
 	case tCommit:
 		return r.StatCommit(ref, path)
 
+	case tBranch:
+		return r.StatBranch(ref)
+
 	default:
 		return nil, os.ErrNotExist
 	}
@@ -53,6 +56,9 @@ func (r *GitRepo) List(pType, ref, path string) ([]os.FileInfo, error) {
 	switch pType {
 	case tCommit:
 		return r.ListCommit(ref, path)
+
+	case tBranch:
+		return r.ListBranch()
 
 	default:
 		return nil, os.ErrNotExist
@@ -69,6 +75,28 @@ func (r *GitRepo) StatCommit(ref, p string) (os.FileInfo, error) {
 	return r.statCommitFile(ref, pathType, path)
 }
 
+func (r *GitRepo) StatBranch(ref string) (os.FileInfo, error) {
+	branches, err := r.Repo.Branches()
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		b, err := branches.Next()
+		if err == io.EOF {
+			return nil, os.ErrNotExist
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		if b.Name().Short() == ref {
+			return NewLinkInfo(ref), nil
+		}
+	}
+}
+
 func (r *GitRepo) ListCommit(ref, path string) ([]os.FileInfo, error) {
 	if ref == "" && path == "" {
 		return r.ListCommits()
@@ -80,6 +108,30 @@ func (r *GitRepo) ListCommit(ref, path string) ([]os.FileInfo, error) {
 	}
 
 	return r.listCommitDirectory(ref, pathType, p)
+}
+
+func (r *GitRepo) ListBranch() ([]os.FileInfo, error) {
+	branches, err := r.Repo.Branches()
+	if err != nil {
+		return nil, err
+	}
+
+	files := make([]os.FileInfo, 0, 2)
+
+	for {
+		b, err := branches.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		files = append(files, NewFileInfo(b.Name().Short(), 0, false))
+	}
+
+	return files, nil
 }
 
 func (r *GitRepo) statCommitFile(ref, pType, path string) (os.FileInfo, error) {
@@ -276,8 +328,34 @@ func (r *GitRepo) Readlink(pType, ref, path string) (string, error) {
 
 		return "", os.ErrNotExist
 
+	case tBranch:
+		return r.linkBranch(ref)
+
 	default:
 		return "", os.ErrNotExist
+	}
+}
+
+func (r *GitRepo) linkBranch(ref string) (string, error) {
+	branches, err := r.Repo.Branches()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		b, err := branches.Next()
+		if err == io.EOF {
+			return "", os.ErrNotExist
+		}
+
+		if err != nil {
+			return "", err
+		}
+
+		if b.Name().Short() == ref {
+			hash := b.Hash().String()
+			return fmt.Sprintf("../_commit_/%v", hash), nil
+		}
 	}
 }
 
