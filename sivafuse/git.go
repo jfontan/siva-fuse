@@ -46,6 +46,9 @@ func (r *GitRepo) GetAttr(pType, ref, path string) (os.FileInfo, error) {
 	case tBranch:
 		return r.StatBranch(ref)
 
+	case tTag:
+		return r.StatTag(ref)
+
 	default:
 		return nil, os.ErrNotExist
 	}
@@ -59,6 +62,9 @@ func (r *GitRepo) List(pType, ref, path string) ([]os.FileInfo, error) {
 
 	case tBranch:
 		return r.ListBranch()
+
+	case tTag:
+		return r.ListTag()
 
 	default:
 		return nil, os.ErrNotExist
@@ -97,6 +103,28 @@ func (r *GitRepo) StatBranch(ref string) (os.FileInfo, error) {
 	}
 }
 
+func (r *GitRepo) StatTag(ref string) (os.FileInfo, error) {
+	tags, err := r.Repo.Tags()
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		t, err := tags.Next()
+		if err == io.EOF {
+			return nil, os.ErrNotExist
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		if t.Name().Short() == ref {
+			return NewLinkInfo(ref), nil
+		}
+	}
+}
+
 func (r *GitRepo) ListCommit(ref, path string) ([]os.FileInfo, error) {
 	if ref == "" && path == "" {
 		return r.ListCommits()
@@ -129,6 +157,33 @@ func (r *GitRepo) ListBranch() ([]os.FileInfo, error) {
 		}
 
 		files = append(files, NewFileInfo(b.Name().Short(), 0, false))
+	}
+
+	return files, nil
+}
+
+func (r *GitRepo) ListTag() ([]os.FileInfo, error) {
+	tags, err := r.Repo.Tags()
+	if err != nil {
+		println("ERROR", err.Error())
+		return nil, err
+	}
+
+	files := make([]os.FileInfo, 0, 2)
+
+	for {
+		t, err := tags.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		name := t.Name().Short()
+
+		files = append(files, NewFileInfo(name, 0, false))
 	}
 
 	return files, nil
@@ -331,6 +386,9 @@ func (r *GitRepo) Readlink(pType, ref, path string) (string, error) {
 	case tBranch:
 		return r.linkBranch(ref)
 
+	case tTag:
+		return r.linkTag(ref)
+
 	default:
 		return "", os.ErrNotExist
 	}
@@ -354,6 +412,29 @@ func (r *GitRepo) linkBranch(ref string) (string, error) {
 
 		if b.Name().Short() == ref {
 			hash := b.Hash().String()
+			return fmt.Sprintf("../_commit_/%v", hash), nil
+		}
+	}
+}
+
+func (r *GitRepo) linkTag(ref string) (string, error) {
+	tags, err := r.Repo.Tags()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		t, err := tags.Next()
+		if err == io.EOF {
+			return "", os.ErrNotExist
+		}
+
+		if err != nil {
+			return "", err
+		}
+
+		if t.Name().Short() == ref {
+			hash := t.Hash().String()
 			return fmt.Sprintf("../_commit_/%v", hash), nil
 		}
 	}
