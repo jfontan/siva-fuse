@@ -65,9 +65,13 @@ func getGitPath(name string) (ok bool, pathType, ref, path string) {
 			pathType = t
 
 			if len(p) > 1 {
-				ref = p[1]
-				if len(p) > 2 {
-					path = strings.Join(p[2:], "/")
+				if pathType == tCommit {
+					ref = p[1]
+					if len(p) > 2 {
+						path = strings.Join(p[2:], "/")
+					}
+				} else {
+					ref = strings.Join(p[1:], "/")
 				}
 			}
 

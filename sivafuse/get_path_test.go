@@ -23,8 +23,8 @@ var gitExamples = []gitExample{
 		Path:     "",
 	},
 	{"/_commit_/76683487299ab8", true, "commit", "76683487299ab8", ""},
-	{"/_tag_/v0.6.5/some/path", true, "tag", "v0.6.5", "some/path"},
-	{"/_branch_/master/other/path", true, "branch", "master", "other/path"},
+	{"/_tag_/v0.6.5/some/path", true, "tag", "v0.6.5/some/path", ""},
+	{"/_branch_/master/other/path", true, "branch", "master/other/path", ""},
 	{"/_branch/master/other/path", false, "", "", ""},
 }
 
