@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/storer"
 )
@@ -52,37 +51,16 @@ func statTag(repo *git.Repository, ref string) (os.FileInfo, error) {
 }
 
 func statRef(iter storer.ReferenceIter, ref string) (os.FileInfo, error) {
-	println("statRef", ref)
-	// refDir := ref
-	refDir := filepath.Dir(ref)
-	refName := filepath.Base(ref)
-
-	if refDir == "." {
-		refDir = ""
-	}
-
-	println("REFDIR", refDir, refName)
-
-	refs, err := getRefs(iter, refDir)
+	r, err := getOneRef(iter, ref)
 	if err != nil {
 		return nil, err
 	}
 
-	spew.Dump(refs)
-
-	for _, r := range refs {
-		if r.name != refName {
-			continue
-		}
-
-		if r.dir {
-			return NewFileInfo(r.name, 0, true), nil
-		}
-
-		return NewLinkInfo(r.name), nil
+	if r.dir {
+		return NewFileInfo(r.name, 0, true), nil
 	}
 
-	return nil, os.ErrNotExist
+	return NewLinkInfo(r.name), nil
 }
 
 func listBranch(repo *git.Repository, ref string) ([]os.FileInfo, error) {
@@ -134,6 +112,28 @@ func splitRef(ref string, level int) (string, []string) {
 
 	base := strings.Join(split[:level], "/")
 	return base, split[level:]
+}
+
+func getOneRef(iter storer.ReferenceIter, ref string) (*refInfo, error) {
+	refDir := filepath.Dir(ref)
+	refName := filepath.Base(ref)
+
+	if refDir == "." {
+		refDir = ""
+	}
+
+	refs, err := getRefs(iter, refDir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range refs {
+		if r.name == refName {
+			return r, nil
+		}
+	}
+
+	return nil, os.ErrNotExist
 }
 
 func getRefs(
