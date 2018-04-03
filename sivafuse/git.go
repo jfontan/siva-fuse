@@ -44,10 +44,10 @@ func (r *GitRepo) GetAttr(pType, ref, path string) (os.FileInfo, error) {
 		return r.StatCommit(ref, path)
 
 	case tBranch:
-		return r.StatBranch(ref)
+		return statBranch(r.Repo, ref)
 
 	case tTag:
-		return r.StatTag(ref)
+		return statTag(r.Repo, ref)
 
 	default:
 		return nil, os.ErrNotExist
@@ -61,10 +61,10 @@ func (r *GitRepo) List(pType, ref, path string) ([]os.FileInfo, error) {
 		return r.ListCommit(ref, path)
 
 	case tBranch:
-		return r.ListBranch()
+		return listBranch(r.Repo, ref)
 
 	case tTag:
-		return r.ListTag()
+		return listTag(r.Repo, ref)
 
 	default:
 		return nil, os.ErrNotExist
@@ -81,50 +81,6 @@ func (r *GitRepo) StatCommit(ref, p string) (os.FileInfo, error) {
 	return r.statCommitFile(ref, pathType, path)
 }
 
-func (r *GitRepo) StatBranch(ref string) (os.FileInfo, error) {
-	branches, err := r.Repo.Branches()
-	if err != nil {
-		return nil, err
-	}
-
-	for {
-		b, err := branches.Next()
-		if err == io.EOF {
-			return nil, os.ErrNotExist
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		if b.Name().Short() == ref {
-			return NewLinkInfo(ref), nil
-		}
-	}
-}
-
-func (r *GitRepo) StatTag(ref string) (os.FileInfo, error) {
-	tags, err := r.Repo.Tags()
-	if err != nil {
-		return nil, err
-	}
-
-	for {
-		t, err := tags.Next()
-		if err == io.EOF {
-			return nil, os.ErrNotExist
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		if t.Name().Short() == ref {
-			return NewLinkInfo(ref), nil
-		}
-	}
-}
-
 func (r *GitRepo) ListCommit(ref, path string) ([]os.FileInfo, error) {
 	if ref == "" && path == "" {
 		return r.ListCommits()
@@ -136,57 +92,6 @@ func (r *GitRepo) ListCommit(ref, path string) ([]os.FileInfo, error) {
 	}
 
 	return r.listCommitDirectory(ref, pathType, p)
-}
-
-func (r *GitRepo) ListBranch() ([]os.FileInfo, error) {
-	branches, err := r.Repo.Branches()
-	if err != nil {
-		return nil, err
-	}
-
-	files := make([]os.FileInfo, 0, 2)
-
-	for {
-		b, err := branches.Next()
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		files = append(files, NewFileInfo(b.Name().Short(), 0, false))
-	}
-
-	return files, nil
-}
-
-func (r *GitRepo) ListTag() ([]os.FileInfo, error) {
-	tags, err := r.Repo.Tags()
-	if err != nil {
-		println("ERROR", err.Error())
-		return nil, err
-	}
-
-	files := make([]os.FileInfo, 0, 2)
-
-	for {
-		t, err := tags.Next()
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		name := t.Name().Short()
-
-		files = append(files, NewFileInfo(name, 0, false))
-	}
-
-	return files, nil
 }
 
 func (r *GitRepo) statCommitFile(ref, pType, path string) (os.FileInfo, error) {

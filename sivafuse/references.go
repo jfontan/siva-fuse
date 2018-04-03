@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/storer"
 )
@@ -33,33 +34,55 @@ func newRefLink(name, link string) *refInfo {
 }
 
 func statBranch(repo *git.Repository, ref string) (os.FileInfo, error) {
-	return nil, os.ErrNotExist
-}
-
-func statTag(repo *git.Repository, ref string) (os.FileInfo, error) {
-	return nil, os.ErrNotExist
-}
-
-func statRef(repo *git.Repository, ref string) (os.FileInfo, error) {
 	branches, err := repo.Branches()
 	if err != nil {
 		return nil, err
 	}
 
-	for {
-		b, err := branches.Next()
-		if err == io.EOF {
-			return nil, os.ErrNotExist
-		}
+	return statRef(branches, ref)
+}
 
-		if err != nil {
-			return nil, err
-		}
-
-		if b.Name().Short() == ref {
-			return NewLinkInfo(ref), nil
-		}
+func statTag(repo *git.Repository, ref string) (os.FileInfo, error) {
+	tags, err := repo.Tags()
+	if err != nil {
+		return nil, err
 	}
+
+	return statRef(tags, ref)
+}
+
+func statRef(iter storer.ReferenceIter, ref string) (os.FileInfo, error) {
+	println("statRef", ref)
+	// refDir := ref
+	refDir := filepath.Dir(ref)
+	refName := filepath.Base(ref)
+
+	if refDir == "." {
+		refDir = ""
+	}
+
+	println("REFDIR", refDir, refName)
+
+	refs, err := getRefs(iter, refDir)
+	if err != nil {
+		return nil, err
+	}
+
+	spew.Dump(refs)
+
+	for _, r := range refs {
+		if r.name != refName {
+			continue
+		}
+
+		if r.dir {
+			return NewFileInfo(r.name, 0, true), nil
+		}
+
+		return NewLinkInfo(r.name), nil
+	}
+
+	return nil, os.ErrNotExist
 }
 
 func listBranch(repo *git.Repository, ref string) ([]os.FileInfo, error) {
@@ -78,6 +101,24 @@ func listTag(repo *git.Repository, ref string) ([]os.FileInfo, error) {
 	}
 
 	return listRef(tags, ref)
+}
+
+func listRef(iter storer.ReferenceIter, ref string) ([]os.FileInfo, error) {
+	refs, err := getRefs(iter, ref)
+	if err != nil {
+		return nil, err
+	}
+
+	files := make([]os.FileInfo, len(refs))
+	for i, r := range refs {
+		if r.dir {
+			files[i] = NewFileInfo(r.name, 0, true)
+		} else {
+			files[i] = NewLinkInfo(r.name)
+		}
+	}
+
+	return files, nil
 }
 
 func splitRef(ref string, level int) (string, []string) {
@@ -166,8 +207,4 @@ func getRefs(
 	}
 
 	return refs, nil
-}
-
-func listRef(iter storer.ReferenceIter, ref string) ([]os.FileInfo, error) {
-	return nil, nil
 }
