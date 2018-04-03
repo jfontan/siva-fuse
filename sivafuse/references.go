@@ -32,6 +32,8 @@ func newRefLink(name, link string) *refInfo {
 	return newRefInfo(name, false, link)
 }
 
+// ######## STAT ########
+
 func statBranch(repo *git.Repository, ref string) (os.FileInfo, error) {
 	branches, err := repo.Branches()
 	if err != nil {
@@ -62,6 +64,8 @@ func statRef(iter storer.ReferenceIter, ref string) (os.FileInfo, error) {
 
 	return NewLinkInfo(r.name), nil
 }
+
+// ######## LIST ########
 
 func listBranch(repo *git.Repository, ref string) ([]os.FileInfo, error) {
 	branches, err := repo.Branches()
@@ -98,6 +102,41 @@ func listRef(iter storer.ReferenceIter, ref string) ([]os.FileInfo, error) {
 
 	return files, nil
 }
+
+// ######## READLINK ########
+
+func linkBranch(repo *git.Repository, ref string) (string, error) {
+	branches, err := repo.Branches()
+	if err != nil {
+		return "", err
+	}
+
+	return linkRef(branches, ref)
+}
+
+func linkTag(repo *git.Repository, ref string) (string, error) {
+	tags, err := repo.Tags()
+	if err != nil {
+		return "", err
+	}
+
+	return linkRef(tags, ref)
+}
+
+func linkRef(iter storer.ReferenceIter, ref string) (string, error) {
+	r, err := getOneRef(iter, ref)
+	if err != nil {
+		return "", err
+	}
+
+	if r != nil && !r.dir && r.link != "" {
+		return r.link, nil
+	}
+
+	return "", os.ErrNotExist
+}
+
+// ######## HELPERS ########
 
 func splitRef(ref string, level int) (string, []string) {
 	split := strings.Split(ref, "/")

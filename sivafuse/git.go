@@ -289,59 +289,13 @@ func (r *GitRepo) Readlink(pType, ref, path string) (string, error) {
 		return "", os.ErrNotExist
 
 	case tBranch:
-		return r.linkBranch(ref)
+		return linkBranch(r.Repo, ref)
 
 	case tTag:
-		return r.linkTag(ref)
+		return linkTag(r.Repo, ref)
 
 	default:
 		return "", os.ErrNotExist
-	}
-}
-
-func (r *GitRepo) linkBranch(ref string) (string, error) {
-	branches, err := r.Repo.Branches()
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		b, err := branches.Next()
-		if err == io.EOF {
-			return "", os.ErrNotExist
-		}
-
-		if err != nil {
-			return "", err
-		}
-
-		if b.Name().Short() == ref {
-			hash := b.Hash().String()
-			return fmt.Sprintf("../_commit_/%v", hash), nil
-		}
-	}
-}
-
-func (r *GitRepo) linkTag(ref string) (string, error) {
-	tags, err := r.Repo.Tags()
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		t, err := tags.Next()
-		if err == io.EOF {
-			return "", os.ErrNotExist
-		}
-
-		if err != nil {
-			return "", err
-		}
-
-		if t.Name().Short() == ref {
-			hash := t.Hash().String()
-			return fmt.Sprintf("../_commit_/%v", hash), nil
-		}
 	}
 }
 
