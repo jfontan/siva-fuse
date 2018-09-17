@@ -12,25 +12,40 @@ import (
 	"gopkg.in/src-d/go-billy-siva.v4"
 	"gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-billy.v4/memfs"
+	"gopkg.in/src-d/go-billy.v4/osfs"
+	"gopkg.in/src-d/go-log.v1"
 )
 
 // RootSivaFS holds filesystem where siva files are stored
 type RootSivaFS struct {
 	path string
 	pathfs.FileSystem
-	FS     billy.Filesystem
-	SivaFS sivafs.SivaFS
+	FS billy.Filesystem
+
+	log log.Logger
 }
 
 // NewRootSivaFs creates a new RootSivaFS from a path
 func NewRootSivaFs(path string) *RootSivaFS {
+	l := log.With(log.Fields{
+		"path": path,
+	})
+
 	return &RootSivaFS{
 		path:       path,
+		FS:         osfs.New(path),
 		FileSystem: pathfs.NewDefaultFileSystem(),
+		log:        l,
 	}
 }
 
 func (r *RootSivaFS) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
+	l := r.log.With(log.Fields{
+		"function": "Readlink",
+		"name":     name,
+	})
+	l.Debugf("fuse call")
+
 	ok, fsPath, sivaPath := getSivaPath(name)
 
 	if ok {
@@ -39,15 +54,18 @@ func (r *RootSivaFS) Readlink(name string, context *fuse.Context) (string, fuse.
 		if isGit {
 			siva, err := r.newSivaFS(fsPath)
 			if err != nil {
+				l.Errorf(err, "cannot create siva fs")
 				return "", fuse.ENOENT
 			}
 
 			git, err := GitOpen(siva)
 			if err != nil {
+				l.Errorf(err, "cannot open git repo")
 				return "", fuse.ENOENT
 			}
 
 			link, err := git.Readlink(pType, ref, refPath)
+			l.Errorf(err, "cannot read link")
 			if err != nil {
 				return "", fuse.ENOENT
 			}
@@ -56,7 +74,8 @@ func (r *RootSivaFS) Readlink(name string, context *fuse.Context) (string, fuse.
 		}
 	}
 
-	// return "lalalal", fuse.OK
+	l.Infof("path not found")
+
 	return "", fuse.ENOENT
 }
 
@@ -65,6 +84,11 @@ func (r *RootSivaFS) GetAttr(
 	name string,
 	context *fuse.Context,
 ) (*fuse.Attr, fuse.Status) {
+	l := r.log.With(log.Fields{
+		"function": "GetAttr",
+		"name":     name})
+	l.Debugf("fuse call")
+
 	ok, fsPath, sivaPath := getSivaPath(name)
 
 	var file os.FileInfo
@@ -134,6 +158,12 @@ func (r *RootSivaFS) OpenDir(
 	name string,
 	context *fuse.Context,
 ) (stream []fuse.DirEntry, code fuse.Status) {
+	l := r.log.With(log.Fields{
+		"function": "OpenDir",
+		"name":     name,
+	})
+	l.Debugf("fuse call")
+
 	ok, fsPath, sivaPath := getSivaPath(name)
 
 	var dir []os.FileInfo

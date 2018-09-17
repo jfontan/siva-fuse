@@ -7,8 +7,6 @@ import (
 
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
-
-	"gopkg.in/src-d/go-billy.v4/osfs"
 )
 
 func printHelp() {
@@ -17,10 +15,8 @@ func printHelp() {
 
 // NewSivaNodeFs creates a new PathNodeFs from the provided path
 func NewSivaNodeFs(sivaDir string) *pathfs.PathNodeFs {
-	fs := osfs.New(sivaDir)
-
 	root := sivafuse.NewRootSivaFs(sivaDir)
-	root.FS = fs
+
 	pathOpts := &pathfs.PathNodeFsOptions{}
 	rootfs := pathfs.NewPathNodeFs(root, pathOpts)
 
